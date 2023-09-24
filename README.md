@@ -1,5 +1,4 @@
-# Getting Started with the iTwin Viewer Create React App Template
-
+# Getting Started with the iTwin Viewer
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Environment Variables

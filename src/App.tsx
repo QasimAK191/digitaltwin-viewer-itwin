@@ -5,7 +5,7 @@
 
 import "./App.scss";
 
-import type { ScreenViewport } from "@itwin/core-frontend";
+import type { IModelConnection, ScreenViewport } from "@itwin/core-frontend";
 import { FitViewTool, IModelApp, StandardViewId } from "@itwin/core-frontend";
 import { FillCentered } from "@itwin/core-react";
 import { ProgressLinear } from "@itwin/itwinui-react";
@@ -37,6 +37,11 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Auth } from "./Auth";
 import { history } from "./history";
+import { DisplayStyleSettingsProps, QueryRowFormat } from "@itwin/core-common";
+import { SmartDeviceApi } from "./SmartDeviceApi";
+
+import { SmartDeviceDecorator } from './SmartDeviceDecorator';
+
 
 const App: React.FC = () => {
   const [iModelId, setIModelId] = useState(process.env.IMJS_IMODEL_ID);
@@ -136,6 +141,52 @@ const App: React.FC = () => {
     MeasurementActionToolbar.setDefaultActionProvider();
   }, []);
 
+
+    const onIModelConnected = (_imodel: IModelConnection) => {
+        console.log('Hello world');
+
+        IModelApp.viewManager.onViewOpen.addOnce(async (vp: ScreenViewport) => {
+            
+            const viewStyle: DisplayStyleSettingsProps = {
+                viewflags: {
+                    visEdges: false,
+                    shadows: true
+                }
+            }
+
+            vp.overrideDisplayStyle(viewStyle);
+
+            const categoriesToHide: string[] = [
+                "'Wall 2nd'",
+                "'Wall 1st'",
+                "'Dry Wall 2nd'",
+                "'Dry Wall 1st'",
+                "'Brick Exterior'",
+                "'WINDOWS 1st'",
+                "'WINDOWS 2nd'",
+                "'Ceiling 1st'",
+                "'Ceiling 2nd'",
+                "'Callouts'",
+                "'light fixture'",
+                "'Roof'",
+            ]
+
+            const query = `SELECT * FROM Bis.Category
+            WHERE CodeValue IN (${categoriesToHide.toString()})`
+
+            const result = _imodel.query(query, undefined, { rowFormat: QueryRowFormat.UseJsPropertyNames } );
+            const categoryIDs = [];
+
+            for await (const row of result)
+                categoryIDs.push(row.id);
+
+            vp.changeCategoryDisplay(categoryIDs, false);
+
+
+            IModelApp.viewManager.addDecorator(new SmartDeviceDecorator(vp));
+        });
+
+    }
   return (
     <div className="viewer-container">
       {!accessToken && (
@@ -152,6 +203,7 @@ const App: React.FC = () => {
         authClient={authClient}
         viewCreatorOptions={viewCreatorOptions}
         enablePerformanceMonitors={true} // see description in the README (https://www.npmjs.com/package/@itwin/web-viewer-react)
+        onIModelConnected={onIModelConnected}
         onIModelAppInit={onIModelAppInit}
         uiProviders={[
           new ViewerNavigationToolsProvider(),
